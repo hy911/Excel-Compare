@@ -27,7 +27,7 @@ COPY app.py .
 COPY static/ ./static/
 
 # 暴露端口
-EXPOSE 8002
+EXPOSE 0731
 
 # 启动命令
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "0731"]

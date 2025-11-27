@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Diff Tool</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          rel="stylesheet">
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "added-bg": "rgba(209, 231, 221, 0.5)",
+                        "added-text": "#0f5132",
+                        "deleted-bg": "rgba(248, 215, 218, 0.5)",
+                        "deleted-text": "#842029",
+                        "modified-bg": "rgba(255, 243, 205, 0.5)",
+                        "modified-text": "#664d03"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-display bg-background-light text-slate-800">
+<div id="app" class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="flex items-center justify-between whitespace-nowrap border-b border-slate-200 px-4 sm:px-6 md:px-10 py-3 bg-white sticky top-0 z-50">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="showUploadView()">
+            <div class="w-8 h-8 text-primary">
+                <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M36.7273 44C33.9891 44 31.6043 39.8386 30.3636 33.69C29.123 39.8386 26.7382 44 24 44C21.2618 44 18.877 39.8386 17.6364 33.69C16.3957 39.8386 14.0109 44 11.2727 44C7.25611 44 4 35.0457 4 24C4 12.9543 7.25611 4 11.2727 4C14.0109 4 16.3957 8.16144 17.6364 14.31C18.877 8.16144 21.2618 4 24 4C26.7382 4 29.123 8.16144 30.3636 14.31C31.6043 8.16144 33.9891 4 36.7273 4C40.7439 4 44 12.9543 44 24C44 35.0457 40.7439 44 36.7273 44Z"/>
+                </svg>
+            </div>
+            <h1 class="text-lg font-bold tracking-tight">Excel Diff Tool</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="#" class="text-sm font-medium text-slate-600 hover:text-primary hidden sm:block">帮助</a>
+        </div>
+    </header>
+
+    <!-- View: Upload -->
+    <div id="view-upload" class="flex-1 flex justify-center py-8 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-5xl flex flex-col gap-8">
+            <!-- Page Header -->
+            <div class="flex flex-col gap-2 px-4">
+                <h2 class="text-4xl font-black tracking-tight">Excel 文件对比</h2>
+                <p class="text-slate-500">上传文件并开始对比，清晰展示数据差异。</p>
+            </div>
+
+            <!-- Upload Zones -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
+                <!-- Original File -->
+                <div class="flex flex-col gap-4">
+                    <div id="drop-zone-1"
+                         class="upload-zone flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-300 px-6 py-14 bg-white hover:border-primary transition-colors cursor-pointer">
+                        <input type="file" id="file-input-1" accept=".xls,.xlsx,.xlsm" class="hidden">
+                        <div class="flex flex-col items-center gap-2 text-center">
+                            <p class="text-lg font-bold">原始文件 (Source File)</p>
+                            <p class="text-sm text-slate-500">将文件拖拽至此，或点击下方按钮选择文件</p>
+                        </div>
+                        <button type="button" onclick="document.getElementById('file-input-1').click()"
+                                class="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition-colors">
+                            <span class="material-symbols-outlined text-lg">upload_file</span>
+                            选择文件
+                        </button>
+                    </div>
+                    <!-- File Info -->
+                    <div id="file-info-1"
+                         class="hidden flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4">
+                        <span class="material-symbols-outlined text-3xl text-green-500">description</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm truncate" id="file-name-1"></p>
+                            <p class="text-xs text-slate-500" id="file-size-1"></p>
+                        </div>
+                        <button type="button" onclick="removeFile(1)"
+                                class="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-red-500 transition-colors">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Compare File -->
+                <div class="flex flex-col gap-4">
+                    <div id="drop-zone-2"
+                         class="upload-zone flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-300 px-6 py-14 bg-white hover:border-primary transition-colors cursor-pointer">
+                        <input type="file" id="file-input-2" accept=".xls,.xlsx,.xlsm" class="hidden">
+                        <div class="flex flex-col items-center gap-2 text-center">
+                            <p class="text-lg font-bold">对比文件 (Comparison File)</p>
+                            <p class="text-sm text-slate-500">将文件拖拽至此，或点击下方按钮选择文件</p>
+                        </div>
+                        <button type="button" onclick="document.getElementById('file-input-2').click()"
+                                class="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition-colors">
+                            <span class="material-symbols-outlined text-lg">upload_file</span>
+                            选择文件
+                        </button>
+                    </div>
+                    <!-- File Info -->
+                    <div id="file-info-2"
+                         class="hidden flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4">
+                        <span class="material-symbols-outlined text-3xl text-green-500">description</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm truncate" id="file-name-2"></p>
+                            <p class="text-xs text-slate-500" id="file-size-2"></p>
+                        </div>
+                        <button type="button" onclick="removeFile(2)"
+                                class="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-red-500 transition-colors">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="px-4">
+                <h3 class="text-xl font-bold pb-4 border-b border-slate-200">对比选项</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-6">
+                    <!-- Sheet Select -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">选择工作表 (Sheet)</label>
+                        <select id="sheet-select"
+                                class="w-full rounded-lg border-slate-300 bg-white focus:border-primary focus:ring-primary">
+                            <option value="all">对比所有 Sheet</option>
+                        </select>
+                    </div>
+                    <!-- Key Column -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">指定关键列 (可选)</label>
+                        <input type="text" id="key-column" placeholder="例如: A 或 1"
+                               class="w-full rounded-lg border-slate-300 bg-white focus:border-primary focus:ring-primary">
+                    </div>
+                    <!-- Advanced Options -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-3">高级选项</label>
+                        <div class="flex flex-wrap gap-x-6 gap-y-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="case-sensitive" checked
+                                       class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary">
+                                <span class="text-sm text-slate-700">区分大小写</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare Button -->
+            <div class="flex justify-center px-4 py-4">
+                <button id="compare-btn" onclick="startCompare()" disabled
+                        class="flex items-center justify-center gap-2 min-w-[180px] h-12 px-6 bg-primary text-white text-base font-bold rounded-lg hover:bg-primary/90 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed">
+                    <span class="material-symbols-outlined">compare_arrows</span>
+                    开始对比
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View: Results -->
+    <div id="view-results" class="hidden flex-1 flex justify-center py-5 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-7xl flex flex-col gap-6">
+            <!-- Back & Title -->
+            <div class="flex flex-wrap justify-between items-center gap-4 px-4">
+                <div class="flex flex-col gap-1">
+                    <h2 class="text-3xl font-black tracking-tight">对比结果</h2>
+                    <p class="text-slate-500 text-sm">
+                        <span id="result-file1"></span> vs <span id="result-file2"></span>
+                    </p>
+                </div>
+                <button onclick="showUploadView()"
+                        class="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-300 transition-colors">
+                    <span class="material-symbols-outlined text-lg">arrow_back</span>
+                    返回
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mx-4">
+                <!-- Summary -->
+                <div class="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-6 border-b border-slate-200">
+                    <h3 class="text-xl font-bold">Comparison Results</h3>
+                    <div class="flex flex-wrap items-center gap-4 text-sm">
+                        <span><strong>Total Differences:</strong> <span id="summary-total"
+                                                                        class="font-mono">0</span></span>
+                        <span class="text-green-600"><strong>Added:</strong> <span id="summary-added" class="font-mono">0</span></span>
+                        <span class="text-red-600"><strong>Deleted:</strong> <span id="summary-deleted"
+                                                                                   class="font-mono">0</span></span>
+                        <span class="text-yellow-600"><strong>Modified:</strong> <span id="summary-modified"
+                                                                                       class="font-mono">0</span></span>
+                    </div>
+                </div>
+
+                <!-- Sheet Tabs -->
+                <div id="sheet-tabs" class="flex border-b border-slate-200 overflow-x-auto">
+                    <!-- Tabs will be inserted here -->
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="setFilter('all')" data-filter="all"
+                                class="filter-btn px-3 py-1.5 text-sm font-medium bg-primary/20 text-primary rounded-full">
+                            Show All
+                        </button>
+                        <button onclick="setFilter('diff')" data-filter="diff"
+                                class="filter-btn px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-full">
+                            Differences Only
+                        </button>
+                        <button onclick="setFilter('added')" data-filter="added"
+                                class="filter-btn px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-full">
+                            Added
+                        </button>
+                        <button onclick="setFilter('deleted')" data-filter="deleted"
+                                class="filter-btn px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-full">
+                            Deleted
+                        </button>
+                        <button onclick="setFilter('modified')" data-filter="modified"
+                                class="filter-btn px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-full">
+                            Modified
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                            <input type="text" id="search-input" oninput="filterTable()"
+                                   placeholder="Search in results..."
+                                   class="pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-primary focus:border-primary w-48">
+                        </div>
+                        <button onclick="exportResults()"
+                                class="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors">
+                            <span class="material-symbols-outlined text-lg">download</span>
+                            Export
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table id="result-table" class="w-full text-sm text-left">
+                        <thead class="bg-slate-100 text-xs text-slate-600 uppercase">
+                        <!-- Headers will be inserted here -->
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                        <!-- Rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View: Detail -->
+    <div id="view-detail" class="hidden flex-1 flex justify-center py-5 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-6xl flex flex-col gap-6">
+            <!-- Header -->
+            <div class="flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-3xl font-black tracking-tight">Row <span id="detail-row-num"></span> Difference
+                        Details</h2>
+                    <div class="flex items-center gap-2 text-sm text-slate-500 mt-2">
+                        <span class="material-symbols-outlined text-lg">grid_on</span>
+                        <span>Sheet: <span id="detail-sheet-name"></span></span>
+                    </div>
+                </div>
+                <button onclick="showResultsView()"
+                        class="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-300 transition-colors">
+                    <span class="material-symbols-outlined text-lg">arrow_back</span>
+                    Back to Summary
+                </button>
+            </div>
+
+            <!-- Side by Side Comparison -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Original -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <h3 class="text-lg font-bold px-4 py-3 border-b border-slate-200 bg-slate-50">
+                        Original File: <span id="detail-file1" class="text-slate-600 font-normal"></span>
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table id="detail-table-original" class="w-full text-sm">
+                            <!-- Content inserted by JS -->
+                        </table>
+                    </div>
+                </div>
+
+                <!-- New -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <h3 class="text-lg font-bold px-4 py-3 border-b border-slate-200 bg-slate-50">
+                        New File: <span id="detail-file2" class="text-slate-600 font-normal"></span>
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table id="detail-table-new" class="w-full text-sm">
+                            <!-- Content inserted by JS -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 flex flex-col items-center gap-4">
+            <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-lg font-semibold">正在对比中...</p>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"
+         class="hidden fixed bottom-6 right-6 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50"></div>
+</div>
+
+<script>
+    // State
+    let files = {1: null, 2: null};
+    let comparisonResult = null;
+    let currentSheet = null;
+    let currentFilter = 'all';
+
+    // File handling
+    function setupDropZone(zoneId, inputId, fileNum) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+
+        zone.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON') input.click();
+        });
+
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zone.classList.add('border-primary', 'bg-primary/5');
+        });
+
+        zone.addEventListener('dragleave', () => {
+            zone.classList.remove('border-primary', 'bg-primary/5');
+        });
+
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('border-primary', 'bg-primary/5');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(fileNum, e.dataTransfer.files[0]);
+            }
+        });
+
+        input.addEventListener('change', () => {
+            if (input.files.length > 0) {
+                handleFile(fileNum, input.files[0]);
+            }
+        });
+    }
+
+    function handleFile(num, file) {
+        const validExts = ['.xls', '.xlsx', '.xlsm'];
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+        if (!validExts.includes(ext)) {
+            showToast('不支持的文件格式，请上传 .xls, .xlsx 或 .xlsm 文件');
+            return;
+        }
+
+        files[num] = file;
+
+        // Update UI
+        document.getElementById(`drop-zone-${num}`).classList.add('hidden');
+        document.getElementById(`file-info-${num}`).classList.remove('hidden');
+        document.getElementById(`file-name-${num}`).textContent = file.name;
+        document.getElementById(`file-size-${num}`).textContent = formatSize(file.size) + ' - 上传成功';
+
+        updateCompareButton();
+
+        // Load sheets if both files uploaded
+        if (files[1] && files[2]) {
+            loadSheets();
+        }
+    }
+
+    function removeFile(num) {
+        files[num] = null;
+        document.getElementById(`file-input-${num}`).value = '';
+        document.getElementById(`drop-zone-${num}`).classList.remove('hidden');
+        document.getElementById(`file-info-${num}`).classList.add('hidden');
+        updateCompareButton();
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function updateCompareButton() {
+        document.getElementById('compare-btn').disabled = !(files[1] && files[2]);
+    }
+
+    async function loadSheets() {
+        const select = document.getElementById('sheet-select');
+        select.innerHTML = '<option value="all">对比所有 Sheet</option>';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', files[1]);
+
+            const resp = await fetch('/api/sheets', {method: 'POST', body: formData});
+            if (resp.ok) {
+                const data = await resp.json();
+                data.sheets.forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = `仅对比 "${name}"`;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error('Failed to load sheets:', e);
+        }
+    }
+
+    // Compare
+    async function startCompare() {
+        if (!files[1] || !files[2]) return;
+
+        showLoading(true);
+
+        const formData = new FormData();
+        formData.append('original', files[1]);
+        formData.append('compare', files[2]);
+        formData.append('sheet', document.getElementById('sheet-select').value);
+        formData.append('key_column', document.getElementById('key-column').value);
+        formData.append('case_sensitive', document.getElementById('case-sensitive').checked);
+
+        try {
+            const resp = await fetch('/api/compare', {method: 'POST', body: formData});
+
+            if (!resp.ok) {
+                const err = await resp.json();
+                throw new Error(err.detail || '对比失败');
+            }
+
+            comparisonResult = await resp.json();
+            showResultsView();
+            renderResults();
+
+        } catch (e) {
+            showToast(e.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // Views
+    function showUploadView() {
+        document.getElementById('view-upload').classList.remove('hidden');
+        document.getElementById('view-results').classList.add('hidden');
+        document.getElementById('view-detail').classList.add('hidden');
+    }
+
+    function showResultsView() {
+        document.getElementById('view-upload').classList.add('hidden');
+        document.getElementById('view-results').classList.remove('hidden');
+        document.getElementById('view-detail').classList.add('hidden');
+    }
+
+    function showDetailView(rowIdx) {
+        document.getElementById('view-upload').classList.add('hidden');
+        document.getElementById('view-results').classList.add('hidden');
+        document.getElementById('view-detail').classList.remove('hidden');
+        renderDetail(rowIdx);
+    }
+
+    // Render results
+    function renderResults() {
+        if (!comparisonResult) return;
+
+        // File names
+        document.getElementById('result-file1').textContent = comparisonResult.file1;
+        document.getElementById('result-file2').textContent = comparisonResult.file2;
+
+        // Summary
+        document.getElementById('summary-total').textContent = comparisonResult.summary.total_differences;
+        document.getElementById('summary-added').textContent = comparisonResult.summary.added;
+        document.getElementById('summary-deleted').textContent = comparisonResult.summary.deleted;
+        document.getElementById('summary-modified').textContent = comparisonResult.summary.modified;
+
+        // Sheet tabs
+        const tabsContainer = document.getElementById('sheet-tabs');
+        tabsContainer.innerHTML = '';
+
+        comparisonResult.sheet_list.forEach((name, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `px-4 py-3 text-sm font-medium whitespace-nowrap ${idx === 0 ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:bg-slate-100'}`;
+            btn.textContent = name;
+            btn.onclick = () => selectSheet(name);
+            tabsContainer.appendChild(btn);
+        });
+
+        // Select first sheet
+        if (comparisonResult.sheet_list.length > 0) {
+            selectSheet(comparisonResult.sheet_list[0]);
+        }
+    }
+
+    function selectSheet(sheetName) {
+        currentSheet = sheetName;
+
+        // Update tabs
+        document.querySelectorAll('#sheet-tabs button').forEach(btn => {
+            if (btn.textContent === sheetName) {
+                btn.className = 'px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 border-primary text-primary';
+            } else {
+                btn.className = 'px-4 py-3 text-sm font-medium whitespace-nowrap text-slate-500 hover:bg-slate-100';
+            }
+        });
+
+        renderTable();
+    }
+
+    function renderTable() {
+        if (!currentSheet || !comparisonResult) return;
+
+        const sheetData = comparisonResult.sheets[currentSheet];
+        if (!sheetData) return;
+
+        const table = document.getElementById('result-table');
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+
+        // Headers
+        let headerHtml = '<tr><th class="p-3 w-16 text-center">STATUS</th>';
+        sheetData.headers.forEach(h => {
+            headerHtml += `<th class="p-3">${escapeHtml(h)}</th>`;
+        });
+        headerHtml += '</tr>';
+        thead.innerHTML = headerHtml;
+
+        // Rows
+        let rowsHtml = '';
+        const searchText = document.getElementById('search-input').value.toLowerCase();
+
+        sheetData.rows.forEach((row, idx) => {
+            // Filter
+            if (currentFilter === 'diff' && row.status === 'same') return;
+            if (currentFilter === 'added' && row.status !== 'added') return;
+            if (currentFilter === 'deleted' && row.status !== 'deleted') return;
+            if (currentFilter === 'modified' && row.status !== 'modified') return;
+
+            // Search
+            if (searchText) {
+                const rowText = row.cells.map(c => c.value + (c.old_value || '')).join(' ').toLowerCase();
+                if (!rowText.includes(searchText)) return;
+            }
+
+            let rowClass = '';
+            let statusIcon = '';
+
+            if (row.status === 'added') {
+                rowClass = 'bg-added-bg';
+                statusIcon = '<span class="flex items-center justify-center w-6 h-6 bg-green-200 text-green-800 rounded-full text-xs font-bold">+</span>';
+            } else if (row.status === 'deleted') {
+                rowClass = 'bg-deleted-bg line-through text-slate-400';
+                statusIcon = '<span class="flex items-center justify-center w-6 h-6 bg-red-200 text-red-800 rounded-full text-xs font-bold">−</span>';
+            } else if (row.status === 'modified') {
+                statusIcon = '<span class="flex items-center justify-center w-6 h-6 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">Δ</span>';
+            }
+
+            rowsHtml += `<tr class="${rowClass} hover:bg-slate-50 cursor-pointer" onclick="showDetailView(${idx})">`;
+            rowsHtml += `<td class="p-3 text-center">${statusIcon}</td>`;
+
+            row.cells.forEach(cell => {
+                if (cell.status === 'modified' && cell.old_value !== null) {
+                    rowsHtml += `<td class="p-3">
+                            <span class="bg-modified-bg px-2 py-1 rounded">
+                                <span class="line-through text-red-600 mr-2">${escapeHtml(cell.old_value)}</span>
+                                <span class="text-green-700 font-semibold">${escapeHtml(cell.value)}</span>
+                            </span>
+                        </td>`;
+                } else {
+                    rowsHtml += `<td class="p-3">${escapeHtml(cell.value)}</td>`;
+                }
+            });
+
+            rowsHtml += '</tr>';
+        });
+
+        tbody.innerHTML = rowsHtml || '<tr><td colspan="100" class="p-8 text-center text-slate-500">没有匹配的数据</td></tr>';
+    }
+
+    function setFilter(filter) {
+        currentFilter = filter;
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            if (btn.dataset.filter === filter) {
+                btn.className = 'filter-btn px-3 py-1.5 text-sm font-medium bg-primary/20 text-primary rounded-full';
+            } else {
+                btn.className = 'filter-btn px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-full';
+            }
+        });
+
+        renderTable();
+    }
+
+    function filterTable() {
+        renderTable();
+    }
+
+    // Detail view
+    function renderDetail(rowIdx) {
+        if (!currentSheet || !comparisonResult) return;
+
+        const sheetData = comparisonResult.sheets[currentSheet];
+        const row = sheetData.rows[rowIdx];
+        if (!row) return;
+
+        document.getElementById('detail-row-num').textContent = rowIdx + 1;
+        document.getElementById('detail-sheet-name').textContent = currentSheet;
+        document.getElementById('detail-file1').textContent = comparisonResult.file1;
+        document.getElementById('detail-file2').textContent = comparisonResult.file2;
+
+        // Original table
+        let origHtml = '<thead><tr>';
+        sheetData.headers.forEach(h => {
+            origHtml += `<th class="px-4 py-3 text-left font-medium text-slate-600">${escapeHtml(h)}</th>`;
+        });
+        origHtml += '</tr></thead><tbody><tr class="border-t border-slate-200">';
+
+        row.cells.forEach(cell => {
+            const val = cell.old_value !== null ? cell.old_value : cell.value;
+            let cellClass = 'px-4 py-4';
+            if (cell.status === 'modified' || cell.status === 'deleted') {
+                cellClass += ' bg-deleted-bg text-deleted-text rounded';
+            }
+            origHtml += `<td class="${cellClass}">${cell.status === 'modified' ? '<del>' + escapeHtml(val) + '</del>' : escapeHtml(val)}</td>`;
+        });
+        origHtml += '</tr></tbody>';
+        document.getElementById('detail-table-original').innerHTML = origHtml;
+
+        // New table
+        let newHtml = '<thead><tr>';
+        sheetData.headers.forEach(h => {
+            newHtml += `<th class="px-4 py-3 text-left font-medium text-slate-600">${escapeHtml(h)}</th>`;
+        });
+        newHtml += '</tr></thead><tbody><tr class="border-t border-slate-200">';
+
+        row.cells.forEach(cell => {
+            let cellClass = 'px-4 py-4';
+            if (cell.status === 'modified' || cell.status === 'added') {
+                cellClass += ' bg-added-bg text-added-text font-semibold rounded';
+            }
+            newHtml += `<td class="${cellClass}">${escapeHtml(cell.value)}</td>`;
+        });
+        newHtml += '</tr></tbody>';
+        document.getElementById('detail-table-new').innerHTML = newHtml;
+    }
+
+    // Export
+    function exportResults() {
+        if (!comparisonResult) return;
+
+        const dataStr = JSON.stringify(comparisonResult, null, 2);
+        const blob = new Blob([dataStr], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'comparison_result.json';
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    // Utils
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showLoading(show) {
+        document.getElementById('loading').classList.toggle('hidden', !show);
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 5000);
+    }
+
+    // Init
+    setupDropZone('drop-zone-1', 'file-input-1', 1);
+    setupDropZone('drop-zone-2', 'file-input-2', 2);
+</script>
+</body>
+</html>
